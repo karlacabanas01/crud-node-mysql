@@ -40,9 +40,42 @@ exports.getUsers = (req, res) => {
 
 exports.createUser = (req, res) => {
   const { name, email, password } = req.body;
-  const newUser = { id: users.length + 1, name, email, password };
-  users.push(newUser);
-  res.json(newUser);
+
+  // ✅ Validación básica
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "Todos los campos son obligatorios" });
+  }
+
+  // 🚨 Verificar si el correo ya está registrado
+  const checkEmailQuery = "SELECT * FROM users WHERE email = ?";
+  db.query(checkEmailQuery, [email], (err, results) => {
+    if (err) {
+      console.error("Error al verificar el correo:", err);
+      return res.status(500).json({ error: "Error en el servidor" });
+    }
+
+    if (results.length > 0) {
+      return res.status(409).json({ error: "El correo ya está registrado" });
+    }
+
+    // ✅ Insertar el nuevo usuario en la base de datos
+    const insertQuery =
+      "INSERT INTO users (name, email, password) VALUES (?, ?, ?)";
+    db.query(insertQuery, [name, email, password], (err, result) => {
+      if (err) {
+        console.error("Error al crear el usuario:", err);
+        return res.status(500).json({ error: "Error al crear el usuario" });
+      }
+
+      const newUser = {
+        id: result.insertId,
+        name,
+        email,
+      };
+
+      res.status(201).json(newUser); // ✅ Responder con el nuevo usuario creado
+    });
+  });
 };
 
 exports.updateUser = (req, res) => {

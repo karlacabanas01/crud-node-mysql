@@ -4,6 +4,7 @@ const authController = require("../controllers/authController");
 
 // ✅ Ruta para el login
 router.post("/login", authController.login);
+router.post("/register", authController.createUser);
 
 // Rutas para usuarios
 router.get("/users", authController.getUsers);
