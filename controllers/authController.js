@@ -4,25 +4,37 @@ const jwt = require("jsonwebtoken");
 exports.login = (req, res) => {
   const { email, password } = req.body;
 
-  // ✅ Consulta SQL para buscar el usuario en la base de datos
+  console.log("📌 Datos recibidos en el backend:", { email, password });
+
   const query = "SELECT * FROM users WHERE email = ? AND password = ?";
 
   db.query(query, [email, password], (err, results) => {
     if (err) {
-      console.error("Error en la consulta:", err);
+      console.error("❌ Error en la consulta SQL:", err);
       return res.status(500).json({ error: "Error en el servidor" });
     }
 
     if (results.length === 0) {
+      console.log("❌ Usuario no encontrado o credenciales incorrectas");
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
 
     const user = results[0];
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    const token = jwt.sign(
+      { id: user.id, name: user.name, email: user.email }, // ✅ Incluir más datos en el token
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
 
-    res.json({ message: "Inicio de sesión exitoso", token });
+    res.json({
+      message: "Inicio de sesión exitoso",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+    });
   });
 };
 
