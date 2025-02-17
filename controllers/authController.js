@@ -41,7 +41,6 @@ exports.getUsers = (req, res) => {
 exports.createUser = (req, res) => {
   const { name, email, password } = req.body;
 
-  // ✅ Validación básica
   if (!name || !email || !password) {
     return res.status(400).json({ error: "Todos los campos son obligatorios" });
   }
