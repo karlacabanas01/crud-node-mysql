@@ -1,29 +1,42 @@
 const db = require("../config/db");
 
-// ✅ Obtener todos los productos
 exports.getProducts = (req, res) => {
-  const query = "SELECT * FROM products";
-  db.query(query, (err, results) => {
+  console.log("🔍 req.user:", req.user);
+  const userId = req.user.id; // El user_id debe estar disponible en req.user
+
+  if (!userId) {
+    return res.status(401).json({ error: "Usuario no autenticado" });
+  }
+
+  const query = "SELECT * FROM products WHERE user_id = ?";
+
+  db.query(query, [userId], (err, results) => {
     if (err) {
       console.error("Error al obtener productos:", err);
       return res.status(500).json({ error: "Error en el servidor" });
     }
+
     res.json(results);
   });
 };
 
 // ✅ Crear un nuevo producto
 exports.createProduct = (req, res) => {
+  const userId = req.user.id; // Obtener user_id del usuario autenticado
   const { name, description, price } = req.body;
-  const query =
-    "INSERT INTO products (name, description, price) VALUES (?, ?, ?)";
 
-  db.query(query, [name, description, price], (err, result) => {
+  if (!name || !description || !price) {
+    return res.status(400).json({ error: "Todos los campos son obligatorios" });
+  }
+
+  const query =
+    "INSERT INTO products (name, description, price, user_id) VALUES (?, ?, ?, ?)";
+  db.query(query, [name, description, price, userId], (err, result) => {
     if (err) {
-      console.error("Error al crear producto:", err);
+      console.error("Error al agregar producto:", err);
       return res.status(500).json({ error: "Error en el servidor" });
     }
-    res.status(201).json({ message: "Producto creado exitosamente" });
+    res.status(201).json({ message: "Producto agregado correctamente" });
   });
 };
 

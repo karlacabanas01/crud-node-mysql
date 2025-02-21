@@ -1,21 +1,30 @@
 const jwt = require("jsonwebtoken");
 
-const verifyToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+const authenticateUser = (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1];
 
   if (!token) {
-    return res.status(403).json({ message: "Token no proporcionado" });
+    return res
+      .status(401)
+      .json({ error: "Acceso no autorizado - Token no proporcionado" });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-    if (err) {
-      console.log("Error al verificar el token:", err); // Agrega este log para ver detalles
-      return res.status(401).json({ message: "Token inválido" });
+  try {
+    const decoded = jwt.verify(token, "tu_secreto_jwt");
+    console.log("🔍 Usuario decodificado:", decoded); // 👀 Verifica si se obtiene el user_id
+    req.user = decoded; // Asigna el usuario al request
+
+    if (!req.user.id) {
+      return res
+        .status(403)
+        .json({ error: "Token inválido - No contiene user_id" });
     }
-    req.userId = decoded.id;
+
     next();
-  });
+  } catch (error) {
+    console.error("Error en autenticación:", error);
+    res.status(403).json({ error: "Token inválido" });
+  }
 };
 
-module.exports = verifyToken;
+module.exports = { authenticateUser };

@@ -18,8 +18,8 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
-app.use("/api/auth", authRoutes); // ✅ Montar las rutas en "/api/auth"
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
