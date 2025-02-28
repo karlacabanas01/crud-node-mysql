@@ -1,20 +1,4 @@
-# Para docker
-docker compose down
-o
-docker compose down -v # Borra volumenes. la data
-
-docker compose up --build
-
-docker ps
-
-
-# Para la base de datos.
-docker exec -it nabi_mysql mysql -u root -p
-
-USE nabi_db;
-
-
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -22,7 +6,7 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
@@ -31,8 +15,4 @@ CREATE TABLE products (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
-
-SHOW TABLES;
-
-docker restart nabi_backend
 
