@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 
 exports.createUser = async (req, res) => {
-  console.log("🔍 Datos recibidos en el backend:", req.body);
+  console.log("🔍 Datos recibidos en el backend:", req.body.email);
 
   const { username, email, password } = req.body;
 
@@ -11,7 +11,30 @@ exports.createUser = async (req, res) => {
     return res.status(400).json({ error: "Todos los campos son obligatorios" });
   }
 
-  // Verificar si el correo ya está registrado
+  if (username.length < 3) {
+    return res
+      .status(400)
+      .json({ error: "El nombre de usuario debe tener al menos 3 caracteres" });
+  }
+
+  // Expresión regular para validar correo electrónico
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    return res
+      .status(400)
+      .json({ error: "El correo electrónico no es válido" });
+  }
+
+  // Expresión regular para validar contraseña (mínimo 8 caracteres, una mayúscula, un número y un carácter especial)
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+  if (!passwordRegex.test(password)) {
+    return res.status(400).json({
+      error:
+        "La contraseña debe tener al menos 8 caracteres, una mayúscula, un número y un carácter especial",
+    });
+  }
+
+  // **🛑 Verificar si el correo ya está registrado**
   const checkEmailQuery = "SELECT * FROM users WHERE email = ?";
   db.query(checkEmailQuery, [email], async (err, results) => {
     if (err) {
@@ -26,7 +49,6 @@ exports.createUser = async (req, res) => {
     try {
       // **🔐 Encriptar la contraseña antes de guardarla**
       const hashedPassword = await bcrypt.hash(password, 10);
-      console.log("🔐 Contraseña hasheada:", hashedPassword);
 
       const insertQuery =
         "INSERT INTO users (username, email, password) VALUES (?, ?, ?)";
@@ -79,13 +101,15 @@ exports.login = async (req, res) => {
 
     const user = results[0];
 
-    // **🔑 Comparar la contraseña ingresada con la encriptada en la BD**
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ error: "Credenciales inválidas" });
     }
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET || "tu_secreto_jwt",
-      { expiresIn: "1h" });
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      process.env.JWT_SECRET || "tu_secreto_jwt",
+      { expiresIn: "1h" }
+    );
     console.log("✅ Usuario autenticado correctamente:", {
       id: user.id,
       email: user.email,
@@ -97,12 +121,11 @@ exports.login = async (req, res) => {
         username: user.username,
         email: user.email,
       },
-      token, // ✅ Ahora se devuelve el token
+      token,
     });
   });
 };
 
-// ✅ Función para obtener todos los usuarios
 exports.getUsers = (req, res) => {
   const query = "SELECT * FROM users";
   db.query(query, (err, results) => {
@@ -116,14 +139,75 @@ exports.getUsers = (req, res) => {
 
 exports.updateUser = (req, res) => {
   const { id } = req.params;
-  const user = users.find((u) => u.id == id);
-  if (user) {
-    user.name = req.body.name || user.name;
-    user.email = req.body.email || user.email;
-    res.json(user);
-  } else {
-    res.status(404).json({ error: "Usuario no encontrado" });
+  const { username, email } = req.body;
+
+  if (!username && !email) {
+    return res
+      .status(400)
+      .json({ error: "Debe proporcionar al menos un campo para actualizar" });
   }
+
+  if (username !== undefined && username.length < 3) {
+    return res
+      .status(400)
+      .json({ error: "El nombre de usuario debe tener al menos 3 caracteres" });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email !== undefined && !emailRegex.test(email)) {
+    return res
+      .status(400)
+      .json({ error: "El correo electrónico no es válido" });
+  }
+
+  // **🛑 Verificar si el usuario existe**
+  const checkUserQuery = "SELECT * FROM users WHERE id = ?";
+  db.query(checkUserQuery, [id], (err, results) => {
+    if (err) {
+      console.error("❌ Error al buscar el usuario:", err);
+      return res.status(500).json({ error: "Error en el servidor" });
+    }
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    // **📝 Construcción dinámica del query**
+    const updateFields = [];
+    const updateValues = [];
+
+    if (username !== undefined) {
+      updateFields.push("username = ?");
+      updateValues.push(username);
+    }
+
+    if (email !== undefined) {
+      updateFields.push("email = ?");
+      updateValues.push(email);
+    }
+
+    updateValues.push(id);
+
+    const updateQuery = `UPDATE users SET ${updateFields.join(
+      ", "
+    )} WHERE id = ?`;
+    db.query(updateQuery, updateValues, (err, result) => {
+      if (err) {
+        console.error("❌ Error al actualizar usuario:", err);
+        return res
+          .status(500)
+          .json({ error: "Error al actualizar el usuario" });
+      }
+
+      console.log("✅ Usuario actualizado con éxito:", { id, username, email });
+      res.json({
+        message: "Usuario actualizado con éxito",
+        id,
+        username,
+        email,
+      });
+    });
+  });
 };
 
 exports.deleteUser = (req, res) => {
